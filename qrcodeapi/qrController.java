@@ -1,5 +1,10 @@
 package qrcodeapi;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -35,27 +40,34 @@ public class qrController {
 //    }
 
 //    @GetMapping("api/code")
-//    public ResponseEntity<?> getImage2(@RequestParam(required = false) Integer size,
-//                                       @RequestParam(required = false) String type) {
+//    public ResponseEntity<?> getImage2(@RequestParam String contents,
+//                                       @RequestParam(required = false) Integer size,
+//                                       @RequestParam(required = false) String type) throws WriterException {
 //
 //
-//        if (size == null && type == null) {
-//            return new ResponseEntity<>("200", HttpStatus.OK);
-//        }
-//        return new ResponseEntity<>("400", HttpStatus.BAD_REQUEST);
+//        QRCodeWriter qrCodeWriter = new QRCodeWriter();
+//        BitMatrix bitMatrix = qrCodeWriter.encode(contents, BarcodeFormat.QR_CODE, size, size);
+//        BufferedImage bufferedImage = MatrixToImageWriter.toBufferedImage(bitMatrix);
+//
+//        return ResponseEntity.ok()
+//                .contentType(MediaType.parseMediaType("image/" + type.toUpperCase()))
+//                .body(bufferedImage);
 //    }
 
     @GetMapping("api/qrcode")
-    public ResponseEntity<?> getImage(@RequestParam(required = false) Integer size,
-                                      @RequestParam(required = false) String type) {
+    public ResponseEntity<?> getImage(@RequestParam String contents,
+                                      @RequestParam(required = false) Integer size,
+                                      @RequestParam(required = false) String type) throws WriterException {
 
-        BufferedImage bufferedImage = createImage();
 
-        if (size == null || type == null) {
-
+        if (size == null && type == null && contents == null) {
+            BufferedImage bufferedImage = createImage();
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType("image/png"))
                     .body(bufferedImage);
+
+        } else if (contents == null || contents.isEmpty() || contents.matches("\\s*")) {
+            return ResponseHandler.generateResponse(HttpStatus.BAD_REQUEST, "Contents cannot be null or blank");
 
         } else if (size < 150 || size > 350) {
             return ResponseHandler.generateResponse(HttpStatus.BAD_REQUEST, "Image size must be between 150 and 350 pixels");
@@ -63,13 +75,11 @@ public class qrController {
         } else if (!type.matches(".*png|.*jpeg|.*gif")) {
             return ResponseHandler.generateResponse(HttpStatus.BAD_REQUEST, "Only png, jpeg and gif image types are supported");
 
-        } else if ((size > 150 && size <= 350) && type.matches(".*png|.*jpeg|.*gif")){
-            BufferedImage picture = createImage(size);
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType("image/" + type.toUpperCase()))
-                    .body(picture);
         }
-        BufferedImage picture = createImage(size);
+
+        QRCodeWriter qrCodeWriter = new QRCodeWriter();
+        BitMatrix bitMatrix = qrCodeWriter.encode(contents, BarcodeFormat.QR_CODE, size, size);
+        BufferedImage picture = MatrixToImageWriter.toBufferedImage(bitMatrix);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("image/" + type.toUpperCase()))
                 .body(picture);
